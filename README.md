@@ -87,8 +87,8 @@ which will run the script every days at 05 am.
 Next steps:
 
 1) Containerize the application using Docker and deploy using Docker Compose on the Raspberry Pi
-2) Build a dashboard using powerBI or grafrana to analyse the transactional data
-3) Design and develop a script to semi-automate the curl requests required to link your bank to goCardless
+2) Containerize apache airflow for scheduling as a replacement for CRON
+3) Build a dashboard using powerBI or grafrana to analyse the transactional data
 4) Can a Java web app be created to automatically adjust my budget as bills are paid using the data inserted into the database?
 
 
