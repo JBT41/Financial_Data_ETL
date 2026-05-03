@@ -1,5 +1,6 @@
 # financeManager
-The project:
+
+A small ETL script that pulls bank transactions from the GoCardless (Nordigen) API and loads them into a MariaDB database. The focus is on reliability, simplicity, and safe re‑runs. The script handles token refresh, account discovery, transaction retrieval, and database insertion in one place.
 
 The finance manager project is designed to autmatically pull transactional data from my bank account, and insert into a Database ready to be analysed
 there are 3 compenants to the script, refreshing the access token, pulling the transactions, and inserting the transactions into the DB. This will be broken down
@@ -25,71 +26,135 @@ Technologies
 
 3.) Linux (ubuntu)
 
-3.) MySql DB (MariaDB)
+3.) MariaDB
+
+## Overview
+
+The script does the following:
+
+- Refreshes the GoCardless access token using a stored refresh token
+- Retrieves all accounts linked to a requisition
+- Fetches transactions for each account
+- Normalises the data into a consistent structure
+- Inserts the results into MariaDB
+- Avoids duplicates using a primary key on `internalTransactionId`
+- Uses a single database transaction to prevent partial loads
+
+The intention is to make the ETL safe to run on a schedule without worrying about half‑written data or duplicate rows.
+
+## Project Structure
+
+    financeManager/
+    │
+    ├── blankfinanceManager.py     # Main ETL script
+    ├── requirements.txt           # Python dependencies
+    └── README.md
+
+A `.env` file is required for configuration but is not committed to the repository.
+
+## Setup
+
+### 1. Install dependencies
+
+    pip install -r requirements.txt
+
+### 2. Create a `.env` file
+
+Example:
+
+    HOST=localhost
+    DATABASE=finance
+    REQUISITION_ID=49093370-fb0a-4c36-bb98-20c486683583
+
+### 3. Store secrets using keyring
+
+Refresh token:
+
+    keyring.set_password("refresh_token", "refresh_token", "<YOUR_REFRESH_TOKEN>")
+
+Database credentials:
+
+    keyring.set_password("MySQL", "username", "<DB_USER>")
+    keyring.set_password("MySQL", "password", "<DB_PASS>")
+
+This keeps sensitive values out of the code and out of the `.env` file.
+
+## How the ETL Works
+
+### Token refresh
+The script retrieves the refresh token from keyring and exchanges it for a new access token before making any API calls.
+
+### Account discovery
+The requisition ID from `.env` is used to fetch all linked accounts. This avoids hard‑coding account numbers.
+
+### Transaction retrieval
+For each account, the script calls the GoCardless API and extracts the fields needed for the database.
+
+### Database load
+All inserts are wrapped in a single database transaction:
+
+- If all rows succeed, the transaction is committed.
+- If anything fails, the transaction is rolled back.
+
+This prevents partial loads and keeps the table consistent.
+
+### Duplicate protection
+The table uses:
+
+    PRIMARY KEY (internalTransactionId)
+
+This ensures the ETL can be safely re‑run without inserting the same transaction twice.
+
+## Database Schema
+
+The script expects a table with fields similar to:
+
+- transactionID  
+- entryReference  
+- bookingDate  
+- valueDate  
+- amount  
+- currency  
+- debtorName  
+- creditorName  
+- remittanceInformation  
+- proprietaryBankTransactionCode  
+- internalTransactionId (primary key)
+
+The primary key is what guarantees idempotency.
+
+## Running the Script
+
+    python blankfinanceManager.py
+
+If everything is configured correctly, the script will:
+
+- refresh the token  
+- fetch accounts  
+- fetch transactions  
+- load them into MariaDB  
+- skip duplicates  
+- avoid partial loads  
+
+## Scheduling
+
+### Windows Task Scheduler
+Set up a daily trigger and point it at your Python executable and script path.
+
+### Linux cron
+
+    0 7 * * * /usr/bin/python3 /path/to/blankfinanceManager.py
+
+## Future Improvements
+
+- Logging to file
+- Retry logic for API calls
+- Email notifications on success/failure
+- Docker support
+- Unit tests
 
 
 
-
-Now that you have authenticated the goCardLess api with your bank
-you should have 2 very important keys
-  1) access token
-  2) refresh token
-We can move onto the next step - creating the MariaDB structure
-i have a Database called Bank and a table called Bills
-probably not the best naming convention for a large scale application but effective for what i want
-
-![image](https://github.com/user-attachments/assets/ca262f23-9b39-4d3c-86b7-8d4b3b5822f0)
-
-The bills table is setup as below
-
-![image](https://github.com/user-attachments/assets/f1ed1271-57ec-4241-8739-78707ac5b366)
-
-
-
-using a simple select statement we can see an example of the data that we are going to be working with
-its worth noting here that the "amount" is in a double format which is not effective for currency
-this data was inserted before i fixed this blunder.
-
-![image](https://github.com/user-attachments/assets/c102e7f3-6086-4c77-8bf7-80f469ac22c3)
-
-We can start analysing some transactions now
-for example we can look at our daily and total expendeture in december#
-
-![image](https://github.com/user-attachments/assets/4d3bfaac-b4f0-4096-bfd6-06e1dabe8435)
-
-![image](https://github.com/user-attachments/assets/6b67a711-7590-4933-b768-96615d7da501)
-
-
-Here we have the cronjob we setup to automatically run the python script
-this is currently ran on an ubuntu VM - but this will be moved to a Raspbery pi 4b
-this is so the script can be ran everyday without my laptop being left on - Raspberry pi is much small form factor and significantly less power draw.
-
-![image](https://github.com/user-attachments/assets/1cf17fc6-389c-438d-ac51-9756078fd3be)
-
-You'll notice here that the cronjob is setup to run every second ( * * * * *).
-this is because the script in that file location is just a test.
-
-when we move to the PI the cronjob will need updating to (0 5 * * *).
-
-0: Specifies the 0th minute of the hour.
-
-5: Specifies the 5th hour of the day (which is 5 AM).
-
-*: Specifies every day of the month.
-
-*: Specifies every month.
-
-*: Specifies every day of the week.
-
-which will run the script every days at 05 am.
-
-
-Next steps:
-
-1) Containerize the application using Docker and deploy using Docker Compose on the Raspberry Pi
-2) Containerize apache airflow for scheduling as a replacement for CRON
-3) Build a dashboard using powerBI or grafrana to analyse the transactional data
-4) Can a Java web app be created to automatically adjust my budget as bills are paid using the data inserted into the database?
 
 
 
