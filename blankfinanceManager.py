@@ -38,7 +38,6 @@ def get_account_ids(access_token, requisition_id):
     return response_json.get("accounts", [])
 
 
-# EXACT SAME LOGIC YOU USED — now accepts account_id
 def get_transactions(access_token, account_id):
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
@@ -61,7 +60,7 @@ def get_transactions(access_token, account_id):
     return transactions
 
 
-# EXACT SAME INSERT LOGIC YOU WROTE
+
 def insert_transaction(transactions):
     connection = None
     cursor = None
