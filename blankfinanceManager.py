@@ -25,7 +25,7 @@ def refresh_access_token(refresh_token):
     return new_access_token
 
 
-# NEW: get accounts from requisition
+
 def get_account_ids(access_token, requisition_id):
     url = f"https://bankaccountdata.gocardless.com/api/v2/requisitions/{requisition_id}/"
     headers = {
@@ -112,7 +112,6 @@ def main():
     access_token = refresh_access_token(refresh_token)
     account_ids = get_account_ids(access_token, os.environ["44063370-fb4a-4c29-bb88-41b489683583"])
 
-    # EXACT SAME ONE-LINE CALL YOU USED — now loops accounts
     for account_id in account_ids:
         insert_transaction(get_transactions(access_token, account_id))
 if __name__ == "__main__":
